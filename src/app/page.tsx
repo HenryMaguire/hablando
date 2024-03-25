@@ -41,14 +41,8 @@ export default function Home() {
 
     mediaRecorder.onstop = async () => {
       const transcription = await handleTranscription(audioChunks);
-      console.log("Recording stopped");
-      console.log(transcription);
-      console.log(transcription.text);
       const response = await handleChat(transcription.text);
-      console.log(response);
-      const speechResponse = await handleSpeech(response.text);
-      // Assume the API returns a URL to the audio to play
-      playNextAudio();
+      await handleSpeech(response.text);
     };
   };
 
@@ -66,7 +60,6 @@ export default function Home() {
     const formData = new FormData();
     formData.append("audio", audioBlob, "myRecording.wav");
     // Save the audio file to disk
-    console.log("Sending audio to the API...");
     const response = await fetch("/api/transcribe", {
       method: "POST",
       body: formData,
@@ -75,9 +68,6 @@ export default function Home() {
   };
 
   const handleChat = async (content: string) => {
-    console.log("Sending chat to the API...");
-    console.log(content);
-    console.log(JSON.stringify({ content }));
     const response = await fetch("/api/chat", {
       method: "POST",
       body: JSON.stringify({ content }),
@@ -86,9 +76,6 @@ export default function Home() {
   };
 
   const handleSpeech = async (text: string) => {
-    console.log("Sending text to the API...");
-    console.log(text);
-    console.log(JSON.stringify({ text }));
     const response = await fetch("/api/tts", {
       method: "POST",
       body: JSON.stringify({ text }),
