@@ -1,25 +1,21 @@
+import React from 'react';
 import { Message } from "ai";
-
 import { IconMoon, IconUser } from "@/components/ui/icons";
+import styles from '@/components/chat.module.css';
 
-export interface ChatMessageProps {
-  message: Message;
-}
-
-export function ChatMessage({ message, ...props }: ChatMessageProps) {
+export function ChatMessage({ message }: { message: Message }) {
   return (
-    <div {...props}>
+    <div className={styles.messageWrapper}>
       <div
-        className={
-          message.role === "user"
-            ? "bg-background"
-            : "bg-primary text-primary-foreground"
-        }
+        className={`${styles.message} ${
+          message.role === "user" ? styles.userMessage : styles.aiMessage
+        }`}
       >
-        {message.role === "user" ? <IconUser /> : <IconMoon />}
-        {message.content}
+        <span className={styles.icon}>
+          {message.role === "user" ? <IconUser /> : <IconMoon />}
+        </span>
+        <span className={styles.content}>{message.content}</span>
       </div>
     </div>
   );
 }
-

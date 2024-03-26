@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import { Message } from "ai";
-import { submitChat } from "@/actions/chat";
-import { transcribe } from "@/actions/transcribe";
-import { submitTextToSpeech } from "@/actions/tts";
-import { useEffect } from "react";
-import ChatList from "@/components/chat-list";
+import { getChatResponse } from "@/actions/chat";
+import ChatApp from "@/components/chat";
 
 export default function Home() {
   const [recording, setRecording] = useState(false);
@@ -14,6 +11,8 @@ export default function Home() {
     null
   );
   const [conversation, setConversation] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   let audioQueue: string[] = [];
   let isPlaying = false;
 
@@ -26,8 +25,6 @@ export default function Home() {
       const audio = new Audio(audioUrl);
       isPlaying = true;
       audio.play();
-      if (!audioUrl) return;
-      URL.revokeObjectURL(audioUrl);
       audio.onended = async () => {
         await delay(250);
         isPlaying = false;
@@ -42,43 +39,48 @@ export default function Home() {
       {
         role: "user",
         content: content,
-        id: "1",
+        id: `${conversation.length + 1}`,
       } as Message,
     ];
 
-    const response = await submitChat(JSON.stringify(messages));
-
-    setConversation([
+    const response = await getChatResponse(JSON.stringify({ messages }));
+    const newMessages = [
       ...messages,
       {
         role: "assistant",
         content: response,
-        id: "2",
+        id: `${conversation.length + 2}`,
       } as Message,
-    ]);
+    ];
+    setConversation(newMessages);
+    return newMessages;
   };
 
   const handleSpeech = async (text: string) => {
-    const response = await submitTextToSpeech(text);
-    if (response) {
-      const blob = await response.blob();
-      const audioUrl = URL.createObjectURL(blob);
-      audioQueue.push(audioUrl);
-      if (!isPlaying) {
-        playNextAudio();
-      }
+    const response = await fetch("/api/tts", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+    const blob = await response.blob();
+    const audioUrl = URL.createObjectURL(blob);
+    audioQueue.push(audioUrl);
+    if (!isPlaying) {
+      playNextAudio();
     }
   };
 
   const handleTranscription = async (audioChunks: BlobPart[]) => {
-    console.log("Transcribing audio...");
     const audioBlob = new Blob(audioChunks, {
       type: "audio/wav",
     });
-    
-    const file = new File([audioBlob], "filename.wav", { type: "audio/wav" });
-    console.log("Really Transcribing audio...");
-    return await transcribe(file);
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "myRecording.wav");
+    // Save the audio file to disk
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData,
+    });
+    return await response.json();
   };
 
   const startRecording = async () => {
@@ -94,13 +96,12 @@ export default function Home() {
 
     mediaRecorder.onstop = async () => {
       try {
-        console.log("Recording stopped");
+        setIsLoading(true);
         const transcription = await handleTranscription(audioChunks);
-        console.log("Transcription:", transcription);
-        await handleChat(transcription);
-        console.log("Conversation:", conversation);
-        const aiMessage = conversation[conversation.length - 1];
-        console.log("AI Message:", aiMessage);
+        const newConversation = await handleChat(transcription.text);
+        setIsLoading(false);
+        const aiMessage = newConversation[newConversation.length - 1];
+        await handleSpeech(aiMessage.content);
       } catch (error) {
         console.error("Error:", error);
       }
@@ -109,18 +110,16 @@ export default function Home() {
 
   const stopRecording = () => {
     setRecording(false);
-    console.log("stopRecording");
     if (mediaRecorder) {
       mediaRecorder.stop();
     }
   };
 
   const initialiseConversation = async () => {
-    console.log("initialiseConversation");
-    const response = await submitChat(JSON.stringify({ messages: [] }));
-    console.log("response", response);
+    setIsLoading(true);
+    const response = await getChatResponse(JSON.stringify({ messages: [] }));
+    setIsLoading(false);
     if (!response) return;
-    await handleSpeech(response);
     setConversation([
       {
         role: "assistant",
@@ -128,25 +127,18 @@ export default function Home() {
         id: "0",
       } as Message,
     ]);
+    await handleSpeech(response);
   };
-  console.log("conversation", conversation);
   return (
     <>
-      <div>
-        <button onClick={() => initialiseConversation()}>
-          Start Conversation
-        </button>
-      </div>
-      <div>
-        {conversation.length > 0 && (
-          <button
-            onClick={() => (recording ? stopRecording() : startRecording())}
-          >
-            {recording ? "Stop Recording" : "Start Recording"}
-          </button>
-        )}
-      </div>
-      <ChatList conversation={conversation} />
+      <ChatApp
+        conversation={conversation}
+        recording={recording}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
+        initialiseConversation={initialiseConversation}
+        isLoading={isLoading}
+      />
     </>
   );
 }
