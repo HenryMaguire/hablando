@@ -1,8 +1,12 @@
 "use client";
 
-import ChatList from "@/components/chat-list";
 import { useState } from "react";
 import { Message } from "ai";
+import { submitChat } from "@/actions/chat";
+import { transcribe } from "@/actions/transcribe";
+import { submitTextToSpeech } from "@/actions/tts";
+import { useEffect } from "react";
+import ChatList from "@/components/chat-list";
 
 export default function Home() {
   const [recording, setRecording] = useState(false);
@@ -22,12 +26,59 @@ export default function Home() {
       const audio = new Audio(audioUrl);
       isPlaying = true;
       audio.play();
+      if (!audioUrl) return;
+      URL.revokeObjectURL(audioUrl);
       audio.onended = async () => {
         await delay(250);
         isPlaying = false;
         playNextAudio();
       };
     }
+  };
+
+  const handleChat = async (content: string) => {
+    const messages = [
+      ...conversation,
+      {
+        role: "user",
+        content: content,
+        id: "1",
+      } as Message,
+    ];
+
+    const response = await submitChat(JSON.stringify(messages));
+
+    setConversation([
+      ...messages,
+      {
+        role: "assistant",
+        content: response,
+        id: "2",
+      } as Message,
+    ]);
+  };
+
+  const handleSpeech = async (text: string) => {
+    const response = await submitTextToSpeech(text);
+    if (response) {
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      audioQueue.push(audioUrl);
+      if (!isPlaying) {
+        playNextAudio();
+      }
+    }
+  };
+
+  const handleTranscription = async (audioChunks: BlobPart[]) => {
+    console.log("Transcribing audio...");
+    const audioBlob = new Blob(audioChunks, {
+      type: "audio/wav",
+    });
+    
+    const file = new File([audioBlob], "filename.wav", { type: "audio/wav" });
+    console.log("Really Transcribing audio...");
+    return await transcribe(file);
   };
 
   const startRecording = async () => {
@@ -42,10 +93,17 @@ export default function Home() {
     };
 
     mediaRecorder.onstop = async () => {
-      const transcription = await handleTranscription(audioChunks);
-      await handleChat(transcription);
-      const aiMessage = conversation[conversation.length - 1];
-      await handleSpeech(aiMessage.content);
+      try {
+        console.log("Recording stopped");
+        const transcription = await handleTranscription(audioChunks);
+        console.log("Transcription:", transcription);
+        await handleChat(transcription);
+        console.log("Conversation:", conversation);
+        const aiMessage = conversation[conversation.length - 1];
+        console.log("AI Message:", aiMessage);
+      } catch (error) {
+        console.error("Error:", error);
+      }
     };
   };
 
@@ -57,67 +115,38 @@ export default function Home() {
     }
   };
 
-  const handleTranscription = async (audioChunks: BlobPart[]) => {
-    const audioBlob = new Blob(audioChunks, {
-      type: "audio/wav",
-    });
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "myRecording.wav");
-    // Save the audio file to disk
-    const response = await fetch("/api/transcribe", {
-      method: "POST",
-      body: formData,
-    });
-    return await response.json();
-  };
-
-  const handleChat = async (content: string) => {
-    const newConversation = [
-      ...conversation,
-      {
-        role: "user",
-        content: content,
-        id: "1",
-      } as Message,
-    ];
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({ messages: newConversation }),
-    });
-    const data = await response.json();
-
+  const initialiseConversation = async () => {
+    console.log("initialiseConversation");
+    const response = await submitChat(JSON.stringify({ messages: [] }));
+    console.log("response", response);
+    if (!response) return;
+    await handleSpeech(response);
     setConversation([
-      ...newConversation,
       {
         role: "assistant",
-        content: data.text,
-        id: "2",
+        content: response,
+        id: "0",
       } as Message,
     ]);
   };
-
-  const handleSpeech = async (text: string) => {
-    const response = await fetch("/api/tts", {
-      method: "POST",
-      body: JSON.stringify({ text }),
-    });
-    const blob = await response.blob();
-    const audioUrl = URL.createObjectURL(blob);
-    audioQueue.push(audioUrl);
-    if (!isPlaying) {
-      playNextAudio();
-    }
-  };
+  console.log("conversation", conversation);
   return (
     <>
       <div>
-        <button
-          onClick={() => (recording ? stopRecording() : startRecording())}
-        >
-          {recording ? "Stop Recording" : "Start Recording"}
+        <button onClick={() => initialiseConversation()}>
+          Start Conversation
         </button>
       </div>
-      {conversation.length > 0 && <ChatList messages={conversation} />}
+      <div>
+        {conversation.length > 0 && (
+          <button
+            onClick={() => (recording ? stopRecording() : startRecording())}
+          >
+            {recording ? "Stop Recording" : "Start Recording"}
+          </button>
+        )}
+      </div>
+      <ChatList conversation={conversation} />
     </>
   );
 }

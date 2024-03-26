@@ -7,6 +7,9 @@ export interface ChatList {
 }
 
 export default function ChatList({ messages }: ChatList) {
+  if (!messages) {
+    return null;
+  }
   if (!messages.length) {
     return null;
   }
