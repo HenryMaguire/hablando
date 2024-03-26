@@ -24,12 +24,13 @@ correct translation twice. Then you move onto the next one.
 `;
 
 export async function POST(req: NextRequest) {
-  const { content, temperature } = await req.json();
+  const { temperature, messages } = await req.json();
+
   const response = await openai.chat.completions.create({
     model: "gpt-4-turbo-preview",
     messages: [
       { role: "system", content: PROMPT },
-      { role: "user", content: content },
+      ...messages,
     ],
     temperature: temperature || 0.5,
   });

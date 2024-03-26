@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 
+interface Message {
+  role: string;
+  content: string;
+}
 export default function Home() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
+  const [conversation, setConversation] = useState<Message[]>([]);
   let audioQueue: string[] = [];
   let isPlaying = false;
 
@@ -41,8 +46,8 @@ export default function Home() {
 
     mediaRecorder.onstop = async () => {
       const transcription = await handleTranscription(audioChunks);
-      const response = await handleChat(transcription.text);
-      await handleSpeech(response.text);
+      await handleChat(transcription.transcriptiontext);
+      await handleSpeech(conversation[conversation.length - 1].content);
     };
   };
 
@@ -68,11 +73,20 @@ export default function Home() {
   };
 
   const handleChat = async (content: string) => {
+    const newConversation = [
+      ...conversation,
+      { role: "user", content: content } as Message,
+    ];
     const response = await fetch("/api/chat", {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ messages: newConversation }),
     });
-    return await response.json();
+    const data = await response.json();
+
+    setConversation([
+      ...newConversation,
+      { role: "assistant", content: data.text } as Message,
+    ]);
   };
 
   const handleSpeech = async (text: string) => {
@@ -88,10 +102,22 @@ export default function Home() {
     }
   };
   return (
-    <div>
-      <button onClick={() => (recording ? stopRecording() : startRecording())}>
-        {recording ? "Stop Recording" : "Start Recording"}
-      </button>
-    </div>
+    <>
+      <div>
+        <button
+          onClick={() => (recording ? stopRecording() : startRecording())}
+        >
+          {recording ? "Stop Recording" : "Start Recording"}
+        </button>
+      </div>
+      <div>
+        {conversation.map((message, index) => (
+          <div key={index}>
+            <div>{message.role}</div>
+            <div>{message.content}</div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
