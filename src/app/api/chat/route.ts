@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import OpenAI, { ClientOptions } from "openai";
+import { Message } from "ai";
 
 const options: ClientOptions = { apiKey: process.env.OPENAI_API_KEY };
 const openai = new OpenAI(options);
@@ -25,12 +26,13 @@ correct translation twice. Then you move onto the next one.
 
 export async function POST(req: NextRequest) {
   const { temperature, messages } = await req.json();
-
   const response = await openai.chat.completions.create({
     model: "gpt-4-turbo-preview",
     messages: [
       { role: "system", content: PROMPT },
-      ...messages,
+      ...messages.map((message: Message) => {
+        return { role: message.role, content: message.content };
+      }),
     ],
     temperature: temperature || 0.5,
   });

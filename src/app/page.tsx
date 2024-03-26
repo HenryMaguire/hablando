@@ -1,11 +1,9 @@
 "use client";
 
+import ChatList from "@/components/chat-list";
 import { useState } from "react";
+import { Message } from "ai";
 
-interface Message {
-  role: string;
-  content: string;
-}
 export default function Home() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
@@ -39,20 +37,21 @@ export default function Home() {
     mediaRecorder.start();
     setRecording(true);
     const audioChunks: BlobPart[] = [];
-
     mediaRecorder.ondataavailable = (event) => {
       audioChunks.push(event.data);
     };
 
     mediaRecorder.onstop = async () => {
       const transcription = await handleTranscription(audioChunks);
-      await handleChat(transcription.transcriptiontext);
-      await handleSpeech(conversation[conversation.length - 1].content);
+      await handleChat(transcription);
+      const aiMessage = conversation[conversation.length - 1];
+      await handleSpeech(aiMessage.content);
     };
   };
 
   const stopRecording = () => {
     setRecording(false);
+    console.log("stopRecording");
     if (mediaRecorder) {
       mediaRecorder.stop();
     }
@@ -75,7 +74,11 @@ export default function Home() {
   const handleChat = async (content: string) => {
     const newConversation = [
       ...conversation,
-      { role: "user", content: content } as Message,
+      {
+        role: "user",
+        content: content,
+        id: "1",
+      } as Message,
     ];
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -85,7 +88,11 @@ export default function Home() {
 
     setConversation([
       ...newConversation,
-      { role: "assistant", content: data.text } as Message,
+      {
+        role: "assistant",
+        content: data.text,
+        id: "2",
+      } as Message,
     ]);
   };
 
@@ -110,14 +117,7 @@ export default function Home() {
           {recording ? "Stop Recording" : "Start Recording"}
         </button>
       </div>
-      <div>
-        {conversation.map((message, index) => (
-          <div key={index}>
-            <div>{message.role}</div>
-            <div>{message.content}</div>
-          </div>
-        ))}
-      </div>
+      {conversation.length > 0 && <ChatList messages={conversation} />}
     </>
   );
 }
