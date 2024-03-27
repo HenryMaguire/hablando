@@ -42,11 +42,10 @@ Additional rules for the teacher:
 `;
 
 export async function getChatResponse(req: string) {
-  const { messages } = JSON.parse(req);
-  const temperature = 0.5;
+  const { messages, temperature } = JSON.parse(req);
   const allMessages = [
     { role: "system", content: PROMPT },
-    ...messages.map((message: Message) => {
+    ...messages.map((message: any) => {
       return { role: message.role, content: message.content };
     }),
   ];

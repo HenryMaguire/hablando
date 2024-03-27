@@ -1,139 +1,61 @@
 "use client";
 
-import { useState } from "react";
-import { Message } from "ai";
-import { getChatResponse } from "@/actions/chat";
 import ChatApp from "@/components/chat";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { useMediaRecorder } from "@/hooks/useMediaRecorder";
+import { handleChat } from "@/services/chat";
+import { handleSpeech } from "@/services/speech";
+import { handleTranscription } from "@/services/transcription";
+import { useState } from "react";
 
 export default function Home() {
-  const [recording, setRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
-  );
-  const [conversation, setConversation] = useState<Message[]>([]);
+  const [audioChunks, setAudioChunks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [conversation, setConversation] = useState([]);
 
-  let audioQueue: string[] = [];
-  let isPlaying = false;
+  const { queueAudio } = useAudioPlayer();
 
-  const delay = (ms: number | undefined) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
-
-  const playNextAudio = () => {
-    if (audioQueue.length > 0 && !isPlaying) {
-      const audioUrl = audioQueue.shift();
-      const audio = new Audio(audioUrl);
-      isPlaying = true;
-      audio.play();
-      audio.onended = async () => {
-        await delay(250);
-        isPlaying = false;
-        playNextAudio();
-      };
+  const onStop = async (audioChunks: BlobPart[]) => {
+    setIsRecording(false);
+    setIsLoading(true);
+    try {
+      const transcription = await handleTranscription(audioChunks);
+      const aiMessage = await handleChat(
+        conversation,
+        setConversation,
+        transcription.text
+      );
+      setIsLoading(false);
+      await handleSpeech(aiMessage, queueAudio);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+      setAudioChunks([]);
     }
   };
-
-  const handleChat = async (content: string) => {
-    const messages = [
-      ...conversation,
-      {
-        role: "user",
-        content: content,
-        id: `${conversation.length + 1}`,
-      } as Message,
-    ];
-
-    const response = await getChatResponse(JSON.stringify({ messages }));
-    const newMessages = [
-      ...messages,
-      {
-        role: "assistant",
-        content: response,
-        id: `${conversation.length + 2}`,
-      } as Message,
-    ];
-    setConversation(newMessages);
-    return newMessages;
-  };
-
-  const handleSpeech = async (text: string) => {
-    const response = await fetch("/api/tts", {
-      method: "POST",
-      body: JSON.stringify({ text }),
-    });
-    const blob = await response.blob();
-    const audioUrl = URL.createObjectURL(blob);
-    audioQueue.push(audioUrl);
-    if (!isPlaying) {
-      playNextAudio();
-    }
-  };
-
-  const handleTranscription = async (audioChunks: BlobPart[]) => {
-    const audioBlob = new Blob(audioChunks, {
-      type: "audio/wav",
-    });
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "myRecording.wav");
-    // Save the audio file to disk
-    const response = await fetch("/api/transcribe", {
-      method: "POST",
-      body: formData,
-    });
-    return await response.json();
-  };
-
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    setMediaRecorder(mediaRecorder);
-    mediaRecorder.start();
-    setRecording(true);
-    const audioChunks: BlobPart[] = [];
-    mediaRecorder.ondataavailable = (event) => {
-      audioChunks.push(event.data);
-    };
-
-    mediaRecorder.onstop = async () => {
-      try {
-        setIsLoading(true);
-        const transcription = await handleTranscription(audioChunks);
-        const newConversation = await handleChat(transcription.text);
-        setIsLoading(false);
-        const aiMessage = newConversation[newConversation.length - 1];
-        await handleSpeech(aiMessage.content);
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    };
-  };
-
-  const stopRecording = () => {
-    setRecording(false);
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-    }
-  };
+  const { startRecording, stopRecording } = useMediaRecorder(
+    onStop,
+    setIsRecording
+  );
 
   const initialiseConversation = async () => {
     setIsLoading(true);
-    const response = await getChatResponse(JSON.stringify({ messages: [] }));
-    setIsLoading(false);
-    if (!response) return;
-    setConversation([
-      {
-        role: "assistant",
-        content: response,
-        id: "0",
-      } as Message,
-    ]);
-    await handleSpeech(response);
+    try {
+      const aiMessage = await handleChat(conversation, setConversation);
+      await handleSpeech(aiMessage, queueAudio);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   return (
     <>
       <ChatApp
         conversation={conversation}
-        recording={recording}
+        isRecording={isRecording}
         startRecording={startRecording}
         stopRecording={stopRecording}
         initialiseConversation={initialiseConversation}
