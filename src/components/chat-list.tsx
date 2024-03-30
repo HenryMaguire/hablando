@@ -7,7 +7,7 @@ export interface ChatList {
 }
 
 export default function ChatList({ messages }: ChatList) {
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

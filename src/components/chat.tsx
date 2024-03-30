@@ -10,6 +10,13 @@ export default function ChatApp({
   stopRecording,
   initialiseConversation,
   isLoading,
+}: {
+  conversation: any;
+  isRecording: any;
+  startRecording: any;
+  stopRecording: any;
+  initialiseConversation: any;
+  isLoading: any;
 }) {
   return (
     <div className={styles.chatContainer}>
