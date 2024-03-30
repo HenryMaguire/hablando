@@ -7,6 +7,13 @@ export default function SubmitButton({
   startRecording,
   stopRecording,
   initialiseConversation,
+}: {
+  isLoading: boolean;
+  isRecording: boolean;
+  isInitialised: boolean;
+  startRecording: () => void;
+  stopRecording: () => void;
+  initialiseConversation: () => void;
 }) {
   const getButton = () => {
     if (!isInitialised && !isLoading) {

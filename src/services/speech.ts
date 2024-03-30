@@ -1,6 +1,6 @@
 export const handleSpeech = async (
   text: any,
-  queueAudio: (audioUrl: string) => void
+  queueAudio: (audioUrl: string) => void,
 ) => {
   const response = await fetch("/api/elevenlabs-tts", {
     method: "POST",

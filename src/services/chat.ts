@@ -3,7 +3,7 @@ import { getChatResponse } from "@/actions/chat";
 export const handleChat = async (
   conversation: any,
   updateConversation: any,
-  content: string | null = null
+  content: string | null = null,
 ) => {
   const updatedConversation = content
     ? [...conversation, createMessage("user", content)]
@@ -11,7 +11,7 @@ export const handleChat = async (
   updateConversation(updatedConversation);
   try {
     const responseText = await getChatResponse(
-      JSON.stringify({ messages: updatedConversation })
+      JSON.stringify({ messages: updatedConversation }),
     );
     updateConversation((prevConversation: any) => [
       ...prevConversation,

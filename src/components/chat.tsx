@@ -12,11 +12,11 @@ export default function ChatApp({
   isLoading,
 }: {
   conversation: any;
-  isRecording: any;
-  startRecording: any;
-  stopRecording: any;
-  initialiseConversation: any;
-  isLoading: any;
+  isRecording: boolean;
+  startRecording: () => void;
+  stopRecording: () => void;
+  initialiseConversation: () => void;
+  isLoading: boolean;
 }) {
   return (
     <div className={styles.chatContainer}>

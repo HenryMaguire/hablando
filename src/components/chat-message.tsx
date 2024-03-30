@@ -1,7 +1,7 @@
-import React from 'react';
+import React from "react";
 import { Message } from "ai";
 import { IconMoon, IconUser } from "@/components/ui/icons";
-import styles from '@/components/chat.module.css';
+import styles from "@/components/chat.module.css";
 
 export function ChatMessage({ message }: { message: Message }) {
   return (

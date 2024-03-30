@@ -24,7 +24,7 @@ export default function Home() {
       const aiMessage = await handleChat(
         conversation,
         setConversation,
-        transcription.text
+        transcription.text,
       );
       setIsLoading(false);
       await handleSpeech(aiMessage, queueAudio);
@@ -37,7 +37,7 @@ export default function Home() {
   };
   const { startRecording, stopRecording } = useMediaRecorder(
     onStop,
-    setIsRecording
+    setIsRecording,
   );
 
   const initialiseConversation = async () => {

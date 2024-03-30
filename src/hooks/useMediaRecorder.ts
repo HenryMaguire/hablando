@@ -2,10 +2,10 @@ import { useState } from "react";
 
 export const useMediaRecorder = (
   onStop: any,
-  setIsRecording: (arg: boolean) => void
+  setIsRecording: (arg: boolean) => void,
 ) => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
+    null,
   );
 
   const startRecording = async () => {

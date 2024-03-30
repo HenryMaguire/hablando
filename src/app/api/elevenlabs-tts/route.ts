@@ -6,7 +6,7 @@ const elevenlabs = new ElevenLabsClient({
 });
 
 export async function POST(req: NextRequest) {
-  const {text, model, voice} = await req.json()
+  const { text, model, voice } = await req.json();
 
   const audio = await elevenlabs.generate({
     text: text,

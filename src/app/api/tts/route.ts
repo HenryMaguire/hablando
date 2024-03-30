@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
       model: model || "tts-1",
       voice: voice || "alloy",
       input: text,
-      
     });
     const buffer = Buffer.from(await response.arrayBuffer());
     return new NextResponse(buffer);
