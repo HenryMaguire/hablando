@@ -4,7 +4,6 @@ import ChatApp from "@/components/chat";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useMediaRecorder } from "@/hooks/useMediaRecorder";
 import { handleChat } from "@/services/chat";
-import { handleSpeech } from "@/services/speech";
 import { handleTranscription } from "@/services/transcription";
 import { useState } from "react";
 
@@ -21,13 +20,13 @@ export default function Home() {
     setIsLoading(true);
     try {
       const transcription = await handleTranscription(audioChunks);
-      const aiMessage = await handleChat(
+      await handleChat(
         conversation,
         setConversation,
+        queueAudio,
         transcription.text,
       );
       setIsLoading(false);
-      await handleSpeech(aiMessage, queueAudio);
     } catch (error) {
       console.error(error);
     } finally {
@@ -43,8 +42,7 @@ export default function Home() {
   const initialiseConversation = async () => {
     setIsLoading(true);
     try {
-      const aiMessage = await handleChat(conversation, setConversation);
-      await handleSpeech(aiMessage, queueAudio);
+      await handleChat(conversation, setConversation, queueAudio, null);
     } catch (error) {
       console.error(error);
     } finally {

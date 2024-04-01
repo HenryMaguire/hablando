@@ -31,14 +31,14 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c 'cd app && yarn lint --fix'
+        entry: bash -c 'yarn lint --fix'
         language: system
         files: \.[jt]sx?$ # *.js, *.jsx, *.ts and *.tsx
         types: [file]
 
       - id: ts-typecheck
         name: ts-typecheck
-        entry: bash -c 'cd app && yarn typecheck'
+        entry: bash -c 'yarn run typecheck'
         language: system
         files: \.[jt]sx?$ # *.js, *.jsx, *.ts and *.tsx
         types: [file]
